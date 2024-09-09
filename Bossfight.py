@@ -1,4 +1,3 @@
-
 import cv2
 import cvzone
 from cvzone.HandTrackingModule import HandDetector
@@ -19,6 +18,7 @@ imgBat2 = cv2.imread("Resources/batskn.png", cv2.IMREAD_UNCHANGED)
 
 
 
+
 # ตัวตรวจจับมือ
 detector = HandDetector(detectionCon=0.8, maxHands=2)
 
@@ -30,20 +30,33 @@ ballPos = [100, 100]
 speedX = 15
 speedY = 15
 gameOver = False
-
+shoot_ball = False
 hp = [10, 10]
 width = 200
 height = 20
 hp_bars = []
+ball_scale = 1 + (10 - hp[1]) * 5  # ปรับค่า 0.1 เพื่อปรับความเร็วในการเปลี่ยนขนาด
+height, width, _ = imgBall.shape
+new_height = int(height * ball_scale)
+new_width = int(width * ball_scale)
+imgBallResized = cv2.resize(imgBall, (new_width, new_height))
 
+
+#หลอดเลือด ทั้งสองฝ่าย
 for i in range(11):  # 11 ภาพ ตั้งแต่ 0 ถึง 10
     hp_bars.append(cv2.imread(f"Resources/{i}Hpbar.png"))
 
 
 
 while True:
-
-
+    ball_scale = 1 + (10 - hp[1]) * 0.1  # ปรับค่า 0.1 เพื่อปรับความเร็วในการเปลี่ยนขนาด
+    height, width, _ = imgBall.shape
+    new_height = int(height * ball_scale)
+    new_width = int(width * ball_scale)
+    imgBallResized = cv2.resize(imgBall, (new_width, new_height))
+    if cv2.waitKey(1) == ord('s'):
+        speedX = 0
+        speedY = 0
     _, img = cap.read()
     img = cv2.flip(img, 1)
     imgRaw = img.copy()
@@ -64,22 +77,9 @@ while True:
             #if มือข้างซ้าย
             if hand['type'] == "Left":
                 img = cvzone.overlayPNG(img, imgBat1, (59, y1))
-                if 59 < ballPos[0] < 59 + w1 and y1 < ballPos[1] < y1 + h1:
+                if 59 < ballPos[0] < 59 + w1 and y1 < ballPos[1] < y1 + h1:   #ตรวจสอบว่าลูกบอลปะทะกับไม้ตีซ้ายหรือไม่ โดยเปรียบเทียบพิกัดของลูกบอล (ballPos) กับขอบของไม้ตี
                     speedX = -speedX
                     ballPos[0] += 30
-
-
-            if hand['type'] == "Right":
-                img = cvzone.overlayPNG(img, imgBat2, (1195, y1))
-                if 1195 - 50 < ballPos[0] < 1195 and y1 < ballPos[1] < y1 + h1:
-                    speedX = -speedX
-                    ballPos[0] -= 30
-
-
-
-
-
-
 
     # Game Over
     if ballPos[0] < 40 or ballPos[0] > 1200:
@@ -92,9 +92,9 @@ while True:
         # ตรวจสอบว่ามีใคร HP เป็น 0
         gameOver = hp[0] == 0 or hp[1] == 0
 
-        # Reset ตำแหน่งบอลและกำหนดทิศทางใหม่
+        # Reset ตำแหน่งบอลและกำหนดทิศทางใหม่ เมื่อมีคนโดนบอล อัดเข้าตัว
         if hp[0] != 0 or hp[1] != 0:
-            ballPos = [400, 100]
+            ballPos = [640, 100]
             speedX = random.choice([-40, 40])  # กำหนดทิศทาง X แบบสุ่ม
             speedY = random.choice([-40, 40])  # กำหนดทิศทาง Y แบบสุ่ม
     # If game not over move the ball
@@ -103,10 +103,7 @@ while True:
         # ถ้าเกมจบ
         if gameOver:
             # แสดงข้อความ HP บนภาพ gameOver ตอนจบเกม
-            for i in range(2):
-                cv2.putText(imgGameOver, f"PLAYER {i+1} HP = {hp[i]}", (100, 200 + 100 * i), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                            (255, 255, 255), 2)
-            img = imgGameOver
+            for i in range(2):img = imgGameOver
 
     else:
 
@@ -118,17 +115,21 @@ while True:
         ballPos[1] += speedY
 
         # Draw the ball
-        img = cvzone.overlayPNG(img, imgBall, ballPos)
 
-        for i in range(2):
-            hp_bar_index = min(hp[i], 10)  # คำนวณ index ของภาพ HP bar
-            # กำหนดตำแหน่งของภาพ HP bar
-            x = 300 if i == 0 else 900
-            y = 600
-            # แสดงภาพ HP bar ทับลงบนภาพหลัก
-            img[y:y + hp_bars[hp_bar_index].shape[0], x:x + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
+        img = cvzone.overlayPNG(img, imgBallResized, ballPos)
 
-    img[580:700, 20:233] = cv2.resize(imgRaw, (213, 120))
+
+        #HP BAR
+        hp_bar_index = min(hp[0], 10)  # คำนวณ index ของภาพ HP bar
+        x = 100  # ตำแหน่งของ HP bar ของ player 1
+        y = 50
+        img[y:y + hp_bars[hp_bar_index].shape[0], x:x + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
+
+        # แสดง HP bar ของ player 2 เท่านั้น
+        hp_bar_index = min(hp[1], 10)  # คำนวณ index ของภาพ HP bar
+        x = 900  # ตำแหน่งของ HP bar ของ player 2
+        y = 50
+        img[y:y + hp_bars[hp_bar_index].shape[0], x:x + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
 
     cv2.imshow("Image", img)
     key = cv2.waitKey(1)
