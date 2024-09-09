@@ -12,7 +12,7 @@ cap.set(4, 720)
 # เอารูปเข้า
 imgBackground = cv2.imread("Resources/newBG.png")
 imgGameOver = cv2.imread("Resources/gameOver.png")
-imgBall = cv2.imread("Resources/Ball.png", cv2.IMREAD_UNCHANGED)
+imgBall = cv2.imread("Resources/purple.png", cv2.IMREAD_UNCHANGED)
 imgBat1 = cv2.imread("Resources/batgojo.png", cv2.IMREAD_UNCHANGED)
 imgBat2 = cv2.imread("Resources/batskn.png", cv2.IMREAD_UNCHANGED)
 
@@ -30,7 +30,6 @@ ballPos = [100, 100]
 speedX = 15
 speedY = 15
 gameOver = False
-shoot_ball = False
 hp = [10, 10]
 width = 200
 height = 20
@@ -49,14 +48,22 @@ for i in range(11):  # 11 ภาพ ตั้งแต่ 0 ถึง 10
 
 
 while True:
+
+
+
     ball_scale = 1 + (10 - hp[1]) * 0.1  # ปรับค่า 0.1 เพื่อปรับความเร็วในการเปลี่ยนขนาด
     height, width, _ = imgBall.shape
     new_height = int(height * ball_scale)
     new_width = int(width * ball_scale)
     imgBallResized = cv2.resize(imgBall, (new_width, new_height))
+
+
+
     if cv2.waitKey(1) == ord('s'):
         speedX = 0
         speedY = 0
+
+
     _, img = cap.read()
     img = cv2.flip(img, 1)
     imgRaw = img.copy()
@@ -65,7 +72,7 @@ while True:
     hands, img = detector.findHands(img, flipType=False)
 
  # BACKGROUND
-    img = cv2.addWeighted(img, 0.2, imgBackground, 0.8, 0)
+    img = cv2.addWeighted(img, 0, imgBackground, 0.8, 0)
 
     # เช็คมือ
     if hands:

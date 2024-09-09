@@ -1,49 +1,48 @@
-
 import cv2
 import cvzone
 from cvzone.HandTrackingModule import HandDetector
 import numpy as np
 import random
 
-#ตั้งกล่อง
+# ตั้งกล่อง
 cap = cv2.VideoCapture(0)
 cap.set(3, 1280)
 cap.set(4, 720)
 
 # เอารูปเข้า
-imgBackground = cv2.imread("Resources/newBG.png")
-imgGameOver = cv2.imread("Resources/gameOver.png")
-imgBall = cv2.imread("Resources/Ball.png", cv2.IMREAD_UNCHANGED)
+imgBackground = cv2.imread("Resources/newBG 2.png")
+imgGameOver = cv2.imread("Resources/game.png")
+imgBall = cv2.imread("Resources/purple.png", cv2.IMREAD_UNCHANGED)
 imgBat1 = cv2.imread("Resources/batgojo.png", cv2.IMREAD_UNCHANGED)
 imgBat2 = cv2.imread("Resources/batskn.png", cv2.IMREAD_UNCHANGED)
-
-
 
 # ตัวตรวจจับมือ
 detector = HandDetector(detectionCon=0.8, maxHands=2)
 
-
-
-
-# ประกาศตัวแปรตอนเริ่มเกม ภายในเกมจะมีการเปลี่ยนค่า
+# ประกาศตัวแปรตอนเริ่มเกม
 ballPos = [100, 100]
 speedX = 15
 speedY = 15
 gameOver = False
-
-hp = [10, 10]
+hp = [10, 100]
 width = 200
 height = 20
 hp_bars = []
+min_speed = 5
+max_speed = 40
 
 for i in range(11):  # 11 ภาพ ตั้งแต่ 0 ถึง 10
     hp_bars.append(cv2.imread(f"Resources/{i}Hpbar.png"))
 
 
+def create_ball(min_size, max_size):
+    ball_scale = random.uniform(min_size, max_size)
+    return imgBall
+
+
+create_ball(0.5, 2)
 
 while True:
-
-
     _, img = cap.read()
     img = cv2.flip(img, 1)
     imgRaw = img.copy()
@@ -51,8 +50,8 @@ while True:
     # ตามหามือ
     hands, img = detector.findHands(img, flipType=False)
 
- # BACKGROUND
-    img = cv2.addWeighted(img, 0.2, imgBackground, 0.8, 0)
+    # BACKGROUND
+    img = cv2.addWeighted(img, 0, imgBackground, 0.8, 0)
 
     # เช็คมือ
     if hands:
@@ -61,74 +60,53 @@ while True:
             h1, w1, _ = imgBat1.shape
             y1 = y - h1 // 2
             y1 = np.clip(y1, 80, 415)
-            #if มือข้างซ้าย
+
+            # วางแป้นสำหรับมือซ้าย
             if hand['type'] == "Left":
                 img = cvzone.overlayPNG(img, imgBat1, (59, y1))
                 if 59 < ballPos[0] < 59 + w1 and y1 < ballPos[1] < y1 + h1:
                     speedX = -speedX
-                    ballPos[0] += 30
-
-
-            if hand['type'] == "Right":
-                img = cvzone.overlayPNG(img, imgBat2, (1195, y1))
-                if 1195 - 50 < ballPos[0] < 1195 and y1 < ballPos[1] < y1 + h1:
-                    speedX = -speedX
-                    ballPos[0] -= 30
-
-
-
-
+                    speedY = random.randint(min_speed, max_speed)
 
 
 
     # Game Over
     if ballPos[0] < 40 or ballPos[0] > 1200:
-        # ตรวจสอบว่าใครเป็นฝ่ายเสียแต้ม  ถ้าโดนชน = -1 HP
         if ballPos[0] < 40:
             hp[0] -= 1
         else:
             hp[1] -= 1
 
-        # ตรวจสอบว่ามีใคร HP เป็น 0
         gameOver = hp[0] == 0 or hp[1] == 0
-
-        # Reset ตำแหน่งบอลและกำหนดทิศทางใหม่
         if hp[0] != 0 or hp[1] != 0:
             ballPos = [400, 100]
-            speedX = random.choice([-40, 40])  # กำหนดทิศทาง X แบบสุ่ม
-            speedY = random.choice([-40, 40])  # กำหนดทิศทาง Y แบบสุ่ม
-    # If game not over move the ball
+            speedX = random.choice([-40, 40])
+            speedY = random.choice([-40, 40])
+            create_ball(0.5, 2)
+
     if hp[0] == 0 or hp[1] == 0:
         gameOver = True
-        # ถ้าเกมจบ
         if gameOver:
-            # แสดงข้อความ HP บนภาพ gameOver ตอนจบเกม
             for i in range(2):
-                cv2.putText(imgGameOver, f"PLAYER {i+1} HP = {hp[i]}", (100, 200 + 100 * i), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                            (255, 255, 255), 2)
+                cv2.putText(imgGameOver, f"PLAYER {i + 1} HP = {hp[i]}", (100, 200 + 100 * i), cv2.FONT_HERSHEY_SIMPLEX,
+                            1, (255, 255, 255), 2)
             img = imgGameOver
-
     else:
-
-        # Move the Ball
         if ballPos[1] >= 500 or ballPos[1] <= 10:
             speedY = -speedY
 
         ballPos[0] += speedX
         ballPos[1] += speedY
 
-        # Draw the ball
+        # วาดลูกบอล
         img = cvzone.overlayPNG(img, imgBall, ballPos)
 
-        for i in range(2):
-            hp_bar_index = min(hp[i], 10)  # คำนวณ index ของภาพ HP bar
-            # กำหนดตำแหน่งของภาพ HP bar
-            x = 300 if i == 0 else 900
-            y = 600
-            # แสดงภาพ HP bar ทับลงบนภาพหลัก
-            img[y:y + hp_bars[hp_bar_index].shape[0], x:x + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
+        # HP BAR
+        hp_bar_index = min(hp[0], 10)
+        img[50:50 + hp_bars[hp_bar_index].shape[0], 100:100 + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
 
-    img[580:700, 20:233] = cv2.resize(imgRaw, (213, 120))
+        hp_bar_index = min(max(hp[1] // 10, 0), 10)
+        img[50:50 + hp_bars[hp_bar_index].shape[0], 900:900 + hp_bars[hp_bar_index].shape[1]] = hp_bars[hp_bar_index]
 
     cv2.imshow("Image", img)
     key = cv2.waitKey(1)
@@ -137,5 +115,5 @@ while True:
         speedX = 40
         speedY = 40
         gameOver = False
-        hp = [10, 10]
+        hp = [10, 100]
         imgGameOver = cv2.imread("Resources/gameOver.png")
